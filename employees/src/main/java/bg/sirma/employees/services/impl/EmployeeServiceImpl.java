@@ -2,6 +2,8 @@ package bg.sirma.employees.services.impl;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -49,15 +51,28 @@ public class EmployeeServiceImpl implements EmployeeService {
 
 			for (String[] record : records) {
 				EmployeeData employeeData = new EmployeeData();
-				employeeData.setEmpId(Integer.parseInt(record[0]));
-				employeeData.setProjectId(Integer.parseInt(record[1]));
-				employeeData.setDateFrom(DateUtil.parseDate(record[2]));
+				if (isNotBlankValue(record[0])) {
+					employeeData.setEmpId(Integer.parseInt(record[0]));
+				} else {
+					throw new Exception("Employee ID cannot be null");
+				}
 
-				if (record[3] != null && !record[3].isBlank() && !record[3].isEmpty() && record[3] != "") {
+				if (isNotBlankValue(record[1])) {
+					employeeData.setProjectId(Integer.parseInt(record[1]));
+				} else {
+					throw new Exception("Project ID cannot be null");
+				}
+				if (isNotBlankValue(record[2])) {
+					employeeData.setDateFrom(DateUtil.parseDate(record[2]));
+				} else {
+					throw new Exception("Date From cannot be null");
+				}
+
+				if (isNotBlankValue(record[3])) {
 					employeeData.setDateTo(DateUtil.parseDate(record[3]));
 				} else {
-					// Set DateTo as today if it is NULL
-					employeeData.setDateTo(new Date());
+					employeeData.setDateTo(null);
+
 				}
 
 				employeeDataList.add(employeeData);
@@ -87,7 +102,8 @@ public class EmployeeServiceImpl implements EmployeeService {
 				projects.put(projectData.getProjectId(), 0);
 			}
 
-			// Calculate the common days between the current project and existing projects for the employee
+			// Calculate the common days between the current project and existing projects
+			// for the employee
 			int commonDays = calculateCommonDays(projects.get(projectData.getProjectId()), projectData);
 
 			// Update the projects map with the maximum common days for the project ID
@@ -128,26 +144,43 @@ public class EmployeeServiceImpl implements EmployeeService {
 	/**
 	 * Calculate the common days worked on a project by an employee.
 	 *
-	 * @param currentCommonDays The current total common days worked on all projects by the employee.
-	 * @param newProjectData    The EmployeeData object representing the new project.
-	 * @return The total common days worked on all projects by the employee including the new project.
+	 * @param currentCommonDays The current total common days worked on all projects
+	 *                          by the employee.
+	 * @param newProjectData    The EmployeeData object representing the new
+	 *                          project.
+	 * @return The total common days worked on all projects by the employee
+	 *         including the new project.
+	 * @throws ParseException
 	 */
-	private int calculateCommonDays(int currentCommonDays, EmployeeData newProjectData) {
-		// Determine the start date of the overlap period between the current project and the new project
-	    Date overlapStart = newProjectData.getDateFrom().after(new Date()) ? new Date() : newProjectData.getDateFrom();
+	private int calculateCommonDays(int currentCommonDays, EmployeeData newProjectData) throws ParseException {
+		// Determine the start date of the overlap period between the current project
+		// and the new project
+		Date overlapStart = newProjectData.getDateFrom().after(new Date()) ? new Date() : newProjectData.getDateFrom();
 
-	    // Determine the end date of the overlap period (default to current date)
-	    Date overlapEnd = new Date();
+		// Determine the end date of the overlap period (default to current date)
+		Date overlapEnd = new Date();
 
-	    // If the new project has an end date and it is before the default end date, update the end date
-	    if (newProjectData.getDateTo() != null && newProjectData.getDateTo().before(overlapEnd)) {
-	        overlapEnd = newProjectData.getDateTo();
-	    }
+		// If the new project has an end date and it is before the default end date,
+		// update the end date
+		if (newProjectData.getDateTo() == null) {
+			Date currentDate = new Date();
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+			String formattedDate = dateFormat.format(currentDate);
+			newProjectData.setDateTo(DateUtil.parseDate(formattedDate));
+		}
+		if (newProjectData.getDateTo().before(overlapEnd)) {
+			overlapEnd = newProjectData.getDateTo();
+		}
 
-	    // Calculate the number of days in the overlap period
-	    long overlapDays = Math.max(0, (overlapEnd.getTime() - overlapStart.getTime()) / (24 * 60 * 60 * 1000));
+		// Calculate the number of days in the overlap period
+		long overlapDays = Math.max(0, (overlapEnd.getTime() - overlapStart.getTime()) / (24 * 60 * 60 * 1000));
 
-	    // Return the total common days worked on all projects by the employee including the new project
-	    return currentCommonDays + (int) overlapDays;
+		// Return the total common days worked on all projects by the employee including
+		// the new project
+		return currentCommonDays + (int) overlapDays;
+	}
+
+	private boolean isNotBlankValue(String record) {
+		return record != null && !record.isBlank() && !record.isEmpty() && record != "";
 	}
 }

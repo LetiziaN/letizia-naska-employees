@@ -8,27 +8,33 @@ function handleFileSelect(event) {
         document.getElementById('responseContainer').style.display = 'none';
 
         const selectedFile = fileInput.files[0];
-        const reader = new FileReader();
+        const formData = new FormData();
+        formData.append('file', selectedFile);
 
-        reader.onload = function (e) {
-            const csvContent = e.target.result;
+        // Send the file to the server
+        fetch('http://localhost:8080/employees/data', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                // Display data in the table
+                displayDataInTable(['EmpID', 'ProjectID', 'DateFrom', 'DateTo'], data);
 
-            // Parse CSV content into an array of rows and columns
-            const rows = csvContent.split('\n');
-            const header = rows[0].split(',');
-            const data = rows.slice(1).map(row => row.split(','));
-
-            // Display data in the table
-            displayDataInTable(header, data);
-
-            // Show the "Show Result" button
-            document.getElementById('showResultBtn').style.display = 'block';
-        };
-
-        // Read the file as text
-        reader.readAsText(selectedFile);
+                // Show the "Show Result" button
+                document.getElementById('showResultBtn').style.display = 'block';
+            } else {
+                console.error('No data received from server.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Handle errors
+        });
     }
 }
+
 
 function displayDataInTable(header, data) {
     const csvTable = document.getElementById('csvTable');
@@ -48,9 +54,9 @@ function displayDataInTable(header, data) {
     // Create table rows
     data.forEach(rowData => {
         const row = document.createElement('tr');
-        rowData.forEach(column => {
+        Object.values(rowData).forEach(value => {
             const cell = document.createElement('td');
-            cell.textContent = column;
+            cell.textContent = value;
             row.appendChild(cell);
         });
         csvTable.appendChild(row);

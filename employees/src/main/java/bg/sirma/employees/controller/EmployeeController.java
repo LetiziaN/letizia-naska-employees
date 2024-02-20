@@ -34,4 +34,14 @@ public class EmployeeController {
 	            throw new Exception("Failed to process file: " + e.getMessage());
 	        }
 	}
+	
+	@PostMapping(path = "/data", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<List<EmployeeData>> readCSVData(@RequestParam("file") MultipartFile file) throws Exception {
+		 try {
+	            List<EmployeeData> employeeDataList = employeeService.readDataFromFile(file);
+	            return ResponseEntity.ok(employeeDataList);
+	        } catch (Exception e) {
+	            throw new Exception("Failed to process file: " + e.getMessage());
+	        }
+	}
 }
