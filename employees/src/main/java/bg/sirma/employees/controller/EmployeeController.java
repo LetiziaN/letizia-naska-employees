@@ -26,10 +26,12 @@ public class EmployeeController {
 
 	@PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<EmployeeResponse> uploadFile(@RequestParam("file") MultipartFile file) throws Exception {
-
-		List<EmployeeData> projects = employeeService.readDataFromFile(file);
-		EmployeeResponse result = employeeService.findLongestWorkingPairs(projects);
-
-		return ResponseEntity.ok(result);
+		 try {
+	            List<EmployeeData> employeeDataList = employeeService.readDataFromFile(file);
+	            EmployeeResponse longestWorkingPair = employeeService.findLongestWorkingPairs(employeeDataList);
+	            return ResponseEntity.ok(longestWorkingPair);
+	        } catch (Exception e) {
+	            throw new Exception("Failed to process file: " + e.getMessage());
+	        }
 	}
 }

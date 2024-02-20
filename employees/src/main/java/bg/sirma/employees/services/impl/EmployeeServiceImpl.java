@@ -2,10 +2,7 @@ package bg.sirma.employees.services.impl;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,58 +71,83 @@ public class EmployeeServiceImpl implements EmployeeService {
 
 	@Override
 	public EmployeeResponse findLongestWorkingPairs(List<EmployeeData> empProjectList) throws Exception {
-	    Map<Integer, Map<Integer, Integer>> employeeProjects = new HashMap<>();
+		Map<Integer, Map<Integer, Integer>> employeeProjects = new HashMap<>();
 
-	    for (EmployeeData projectData : empProjectList) {
-	        if (!employeeProjects.containsKey(projectData.getEmpId())) {
-	            employeeProjects.put(projectData.getEmpId(), new HashMap<>());
-	        }
+		for (EmployeeData projectData : empProjectList) {
+			if (!employeeProjects.containsKey(projectData.getEmpId())) {
+				// Create a new entry in the map with an empty HashMap
+				employeeProjects.put(projectData.getEmpId(), new HashMap<>());
+			}
 
-	        Map<Integer, Integer> projects = employeeProjects.get(projectData.getEmpId());
+			// Get the projects map for the current employee ID
+			Map<Integer, Integer> projects = employeeProjects.get(projectData.getEmpId());
 
-	        if (!projects.containsKey(projectData.getProjectId())) {
-	            projects.put(projectData.getProjectId(), 0);
-	        }
+			if (!projects.containsKey(projectData.getProjectId())) {
+				// Add the project ID to the map with 0 common days
+				projects.put(projectData.getProjectId(), 0);
+			}
 
-	        int commonDays = calculateCommonDays(projects.get(projectData.getProjectId()), projectData);
-	        projects.put(projectData.getProjectId(), Math.max(commonDays, projects.get(projectData.getProjectId())));
-	    }
+			// Calculate the common days between the current project and existing projects for the employee
+			int commonDays = calculateCommonDays(projects.get(projectData.getProjectId()), projectData);
 
-	    EmployeeResponse longestWorkingPair = null;
-	    int maxDaysWorked = 0;
-
-	    for (Integer empID1 : employeeProjects.keySet()) {
-	        for (Integer empID2 : employeeProjects.keySet()) {
-	            if (!empID1.equals(empID2)) {
-	                Set<Integer> commonProjects = new HashSet<>(employeeProjects.get(empID1).keySet());
-	                commonProjects.retainAll(employeeProjects.get(empID2).keySet());
-
-	                for (Integer projectID : commonProjects) {
-	                    int commonDays = Math.min(employeeProjects.get(empID1).get(projectID),
-	                            employeeProjects.get(empID2).get(projectID));
-
-	                    if (commonDays > maxDaysWorked) {
-	                        maxDaysWorked = commonDays;
-	                        longestWorkingPair = new EmployeeResponse(empID1, empID2, commonDays);
-	                    }
-	                }
-	            }
-	        }
-	    }
-
-	    return longestWorkingPair;
-	}
-
-	private int calculateCommonDays(int currentCommonDays, EmployeeData newProjectData) {
-		Date overlapStart = newProjectData.getDateFrom().after(new Date()) ? new Date() : newProjectData.getDateFrom();
-		Date overlapEnd = new Date();
-
-		if (newProjectData.getDateTo() != null && newProjectData.getDateTo().before(overlapEnd)) {
-			overlapEnd = newProjectData.getDateTo();
+			// Update the projects map with the maximum common days for the project ID
+			projects.put(projectData.getProjectId(), Math.max(commonDays, projects.get(projectData.getProjectId())));
 		}
 
-		long overlapDays = Math.max(0, (overlapEnd.getTime() - overlapStart.getTime()) / (24 * 60 * 60 * 1000));
+		EmployeeResponse longestWorkingPair = null;
+		int maxDaysWorked = 0;
 
-		return currentCommonDays + (int) overlapDays;
+		for (Integer empID1 : employeeProjects.keySet()) {
+			for (Integer empID2 : employeeProjects.keySet()) {
+				if (!empID1.equals(empID2)) {
+					// Find the set of common project IDs between the two employees
+					Set<Integer> commonProjects = new HashSet<>(employeeProjects.get(empID1).keySet());
+					commonProjects.retainAll(employeeProjects.get(empID2).keySet());
+
+					// Iterate over each common project ID
+					for (Integer projectID : commonProjects) {
+						// Calculate the common days worked on the project for both employees
+						int commonDays = Math.min(employeeProjects.get(empID1).get(projectID),
+								employeeProjects.get(empID2).get(projectID));
+
+						// Check if the common days worked on the project is greater than the current
+						// maximum
+						if (commonDays > maxDaysWorked) {
+							// If so, update the longest working pair and the maximum days worked
+							maxDaysWorked = commonDays;
+							longestWorkingPair = new EmployeeResponse(empID1, empID2, commonDays);
+						}
+					}
+				}
+			}
+		}
+
+		return longestWorkingPair;
+	}
+
+	/**
+	 * Calculate the common days worked on a project by an employee.
+	 *
+	 * @param currentCommonDays The current total common days worked on all projects by the employee.
+	 * @param newProjectData    The EmployeeData object representing the new project.
+	 * @return The total common days worked on all projects by the employee including the new project.
+	 */
+	private int calculateCommonDays(int currentCommonDays, EmployeeData newProjectData) {
+		// Determine the start date of the overlap period between the current project and the new project
+	    Date overlapStart = newProjectData.getDateFrom().after(new Date()) ? new Date() : newProjectData.getDateFrom();
+
+	    // Determine the end date of the overlap period (default to current date)
+	    Date overlapEnd = new Date();
+
+	    // If the new project has an end date and it is before the default end date, update the end date
+	    if (newProjectData.getDateTo() != null && newProjectData.getDateTo().before(overlapEnd)) {
+	        overlapEnd = newProjectData.getDateTo();
+	    }
+
+	    // Calculate the number of days in the overlap period
+	    long overlapDays = Math.max(0, (overlapEnd.getTime() - overlapStart.getTime()) / (24 * 60 * 60 * 1000));
+
+	    // Return the total common days worked on all projects by the employee including the new project
+	    return currentCommonDays + (int) overlapDays;
 	}
 }
